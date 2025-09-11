@@ -15,6 +15,8 @@ class Order extends Model
         'tipe_layanan',
         'layanan_pengiriman',
         'tipe_pembayaran',
+        'diskon',
+        'subtotal',
         'total_berat',
         'alamat',
         'midtrans_order_id'

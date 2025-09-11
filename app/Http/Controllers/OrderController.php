@@ -64,7 +64,7 @@ class OrderController extends Controller
         }
 
         // Tambahkan harga final ke total
-        $order->total_harga += $hargaFinal;
+        $order->subtotal += $hargaFinal;
         $order->save();
 
         // Cek redirect
@@ -98,10 +98,10 @@ class OrderController extends Controller
         if ($order) {
             $orderItem = OrderItem::where('order_id', $order->id)->where('produk_id', $id)->first();
             if ($orderItem) {
-                $order->total_harga -= $orderItem->harga * $orderItem->quantity;
+                $order->subtotal -= $orderItem->harga * $orderItem->quantity;
                 $orderItem->delete();
 
-                if ($order->total_harga <= 0) {
+                if ($order->subtotal <= 0) {
                     $order->delete();
                 } else {
                     $order->save();
@@ -146,12 +146,12 @@ class OrderController extends Controller
         ]);
 
         // Update total harga
-        $order->total_harga -= $orderItem->harga * $orderItem->quantity;
+        $order->subtotal -= $orderItem->harga * $orderItem->quantity;
 
         $orderItem->quantity = $quantity;
         $orderItem->save();
 
-        $order->total_harga += $orderItem->harga * $orderItem->quantity;
+        $order->subtotal += $orderItem->harga * $orderItem->quantity;
         $order->save();
 
         return redirect()->route('order.cart')->with('success', 'Keranjang berhasil diperbarui');
@@ -166,7 +166,8 @@ class OrderController extends Controller
         if (!$order || $order->orderItems->count() == 0) {
             return redirect()->route('order.cart')->with('error', 'Keranjang belanja kosong.');
         }
-        $jenisLayanan = $order->total_harga >= 50000 ? 'Instan' : 'Reguler';
+        $jenisLayanan = $order->subtotal >= 50000 ? 'Instan' : 'Reguler';
+        $order->save();
         return view('frontend.v_order.shipping', compact('order', 'customer', 'jenisLayanan'));
     }
 
@@ -189,13 +190,30 @@ class OrderController extends Controller
         $order->load('orderItems.produk');
 
         // Hitung total harga produk
-        $totalHarga = 0;
+        $subtotal = 0;
         foreach ($order->orderItems as $item) {
-            $totalHarga += $item->harga * $item->quantity;
+            $subtotal += $item->harga * $item->quantity;
+        }
+
+        // Jika ambil di toko, diskon 5% dari subtotal
+        $diskon = 0;
+        $masaPromo = 61; // atur masa promo (hari) di sini
+        $persenDiskon = 5;
+
+        if ($order->tipe_layanan === 'Ambil di toko') {
+            $selisihHari = \Carbon\Carbon::parse($order->created_at)->diffInDays(now());
+
+            if ($selisihHari <= $masaPromo) {
+                $diskon = $persenDiskon;
+            }
         }
 
         // Tambahkan biaya ongkir ke total harga
-        $grossAmount = $totalHarga + $order->biaya_ongkir;
+        $totalHarga = $subtotal - ($subtotal * $diskon / 100);
+
+        $order->total_harga = $totalHarga;
+        $order->diskon = $diskon;
+        $order->save();
 
         // Midtrans configuration
         Config::$serverKey = config('midtrans.server_key');
@@ -209,7 +227,7 @@ class OrderController extends Controller
         $params = [
             'transaction_details' => [
                 'order_id' => $orderId,
-                'gross_amount' => (int) $grossAmount, // Pastikan gross_amount adalah integer
+                'gross_amount' => (int) $totalHarga, // Pastikan gross_amount adalah integer
             ],
             'customer_details' => [
                 'first_name' => $customer->nama,
@@ -245,7 +263,7 @@ class OrderController extends Controller
                     ->with('error', 'Alamat dan nomor telepon harus diisi sebelum melanjutkan.');
             }
 
-            $jenisLayanan = $order->total_harga >= 50000 ? 'Instan' : 'Reguler';
+            $jenisLayanan = $order->subtotal >= 50000 ? 'Instan' : 'Reguler';
             $order->layanan_pengiriman = $jenisLayanan;
             $order->alamat = $request->input('alamat');
             $order->no_tlp = $request->input('no_tlp');
@@ -261,7 +279,7 @@ class OrderController extends Controller
     {
         $customer = User::where('id', Auth::id())->first();;;
         // $orders = Order::where('customer_id', $customer->id)->where('status', 'completed')->get();
-        $statuses = ['Paid', 'Kirim', 'Selesai', 'Proses COD', 'Dibatalkan'];
+        $statuses = ['Paid', 'Kirim', 'Selesai', 'Proses COD', 'Dibatalkan', 'Barang Siap Diambil'];
         $orders = Order::where('user_id', $customer->id)
             ->whereIn('status', $statuses)
             ->orderBy('id', 'desc')
@@ -320,7 +338,7 @@ class OrderController extends Controller
 
         // 🚀 Tentukan layanan pengiriman
         if ($order->tipe_layanan === 'Dikirim ke alamat') {
-            $jenisLayanan = $order->total_harga >= 50000 ? 'Instan' : 'Reguler';
+            $jenisLayanan = $order->subtotal >= 50000 ? 'Instan' : 'Reguler';
             $order->layanan_pengiriman = $jenisLayanan;
         } elseif ($order->tipe_layanan === 'Ambil di toko') {
             $order->layanan_pengiriman = 'Ambil ditempat';
@@ -492,6 +510,7 @@ class OrderController extends Controller
                 'nm_pelanggan'     => $user->name,
                 'tlp_pelanggan'    => $user->no_tlp ?? '-',
                 'alamat_pelanggan' => $user->alamat ?? '-',
+                'subtotal'         => $order->subtotal,
                 'ttl_trkasir'      => $order->total_harga,
                 'id_carabayar'     => $order->tipe_pembayaran === 'COD' ? 1 : 2,
                 'jenistx'          => 3,
@@ -597,7 +616,7 @@ class OrderController extends Controller
 
             // 🚀 Tentukan layanan pengiriman
             if ($order->tipe_layanan === 'Dikirim ke alamat') {
-                $jenisLayanan = $order->total_harga >= 50000 ? 'Instan' : 'Reguler';
+                $jenisLayanan = $order->subtotal >= 50000 ? 'Instan' : 'Reguler';
                 $order->layanan_pengiriman = $jenisLayanan;
             } elseif ($order->tipe_layanan === 'Ambil di toko') {
                 $order->layanan_pengiriman = 'Ambil ditempat';

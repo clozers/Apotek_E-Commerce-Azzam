@@ -110,7 +110,7 @@
                                             <td>Diskon</td>
                                             <td colspan="2">
                                                 Rp. {{ number_format($potonganDiskon, 0, ',', '.') }}
-                                                ({{ $order->diskon }}%)</ </td>
+                                                ({{ $order->diskon }}%)</td>
                                         </tr>
                                         <tr>
                                             <th>TOTAL BAYAR</th>

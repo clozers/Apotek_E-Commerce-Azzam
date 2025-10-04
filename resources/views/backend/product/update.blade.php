@@ -38,7 +38,8 @@
                             </div>
 
                             <h6 class="mt-2 text-center">
-                                Terakhir di update oleh {{ $product->admin->nama_lengkap }}
+                                Terakhir di update oleh {{ $product->admin ? $product->admin->nama_lengkap : 'Tidak
+                                diketahui' }}
                             </h6>
                         </div>
 

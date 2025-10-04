@@ -13,8 +13,10 @@
                 <h3 class="card-title">Form Edit Produk</h3>
             </div>
 
-            <form action="{{ route('product.update', $product->id_barang) }}" method="POST"
-                enctype="multipart/form-data">
+            <form
+                action="{{ route('product.update', ['product' => $product->id_barang, 'start' => $start, 'length' => $length]) }}"
+                method="POST" enctype="multipart/form-data">
+
                 @csrf
                 @method('PUT')
 
@@ -33,9 +35,15 @@
 
                                 <img src="{{ $imagePath }}" id="preview-image" class="img-fluid img-thumbnail"
                                     style="height: 270px; width: auto;" alt="Preview Gambar">
-
                             </div>
+
+                            <h6 class="mt-2 text-center">
+                                Terakhir di update oleh {{ $product->admin->nama_lengkap }}
+                            </h6>
                         </div>
+
+
+
 
                         {{-- Form Input di Kanan --}}
                         <div class="col-md-8">

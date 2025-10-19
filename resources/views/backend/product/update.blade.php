@@ -33,7 +33,8 @@
                                 : asset('images/default.png');
                                 @endphp
 
-                                <img src="{{ $imagePath }}" id="preview-image" class="img-fluid img-thumbnail"
+                                <img src="{{ asset('storage/' . ($product->image ?? 'default.png')) }}"
+                                    id="preview-image" class="img-fluid img-thumbnail"
                                     style="height: 270px; width: auto;" alt="Preview Gambar">
                             </div>
 

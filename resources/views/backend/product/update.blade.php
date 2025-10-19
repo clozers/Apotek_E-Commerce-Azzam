@@ -26,12 +26,6 @@
                         <div class="col-md-4 text-center">
                             <label>Preview Gambar</label>
                             <div class="border p-2">
-                                @php
-                                $imagePath = (!empty($product->image) && file_exists(public_path('storage/' .
-                                $product->image)))
-                                ? asset('storage/' . $product->image)
-                                : asset('images/default.png');
-                                @endphp
 
                                 <img src="{{ asset('storage/' . ($product->image ?? 'default.png')) }}"
                                     id="preview-image" class="img-fluid img-thumbnail"
